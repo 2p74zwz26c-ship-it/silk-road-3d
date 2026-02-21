@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Великий Шёлковый путь — Казахстан</title>
+
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+
+</head>
+
+<body>
+
+<a-scene>
+
+<!-- ===== НЕБО ===== -->
+<a-sky src="https://cdn.aframe.io/a-painter/images/sky.jpg"></a-sky>
+
+<!-- ===== СТЕПЬ ===== -->
+<a-plane src="https://cdn.aframe.io/a-painter/images/floor.jpg"
+rotation="-90 0 0"
+width="400"
+height="400">
+</a-plane>
+
+<!-- ===== СВЕТ ===== -->
+<a-light type="ambient" intensity="0.8"></a-light>
+<a-light type="directional" position="10 30 10"></a-light>
+
+<!-- ===== КАМЕРА ===== -->
+<a-entity id="cameraRig" position="0 2 20">
+<a-camera wasd-controls look-controls></a-camera>
+</a-entity>
+
+<!-- ===== МАРШРУТ ГОРОДОВ ===== -->
+
+<!-- Отрар -->
+<a-sphere id="otar" position="-40 3 -80" radius="4" color="#8B4513"></a-sphere>
+
+<a-text value="Отрар\nVIII–XIII вв.\nКрупный торговый центр Шёлкового пути."
+position="-40 8 -80"
+align="center"
+width="30">
+</a-text>
+
+<!-- Тараз -->
+<a-sphere id="taraz" position="0 3 -120" radius="4" color="#A0522D"></a-sphere>
+
+<a-text value="Тараз\nVI век\nЦентр ремесел и торговли."
+position="0 8 -120"
+align="center"
+width="30">
+</a-text>
+
+<!-- Сайрам -->
+<a-sphere id="sayram" position="40 3 -90" radius="4" color="#B8860B"></a-sphere>
+
+<a-text value="Сайрам\nВажный узел Великого Шёлкового пути."
+position="40 8 -90"
+align="center"
+width="30">
+</a-text>
+
+<!-- ===== КАРАВАН ===== -->
+
+<a-assets>
+<a-asset-item id="caravan"
+src="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models/2.0/CesiumMilkTruck/glTF/CesiumMilkTruck.gltf">
+</a-asset-item>
+</a-assets>
+
+<a-entity id="caravanModel"
+gltf-model="#caravan"
+position="0 0 -20"
+scale="2 2 2">
+</a-entity>
+
+<!-- ===== КНОПКИ УПРАВЛЕНИЯ ===== -->
+
+<a-entity position="-3 4 -5">
+<a-text value="Экскурсия"
+color="black"
+width="6">
+</a-text>
+
+<a-box position="0 -1 0" depth="0.2" height="1" width="3"
+color="#F5C26B"
+onclick="goCity('otar')">
+</a-box>
+
+<a-text value="Отрар"
+position="0 -1 0.5"
+align="center"
+color="black">
+</a-text>
+</a-entity>
+
+<!-- ===== СКРИПТ УПРАВЛЕНИЯ ===== -->
+
+<script>
+
+function goCity(city){
+
+let positions = {
+otar: "-40 2 -70",
+taraz: "0 2 -110",
+sayram: "40 2 -80"
+};
+
+document.querySelector("#cameraRig")
+.setAttribute("position", positions[city]);
+
+// Озвучка
+let text = "";
+
+if(city==="otar"){
+text="Отрар — крупный торговый центр Шёлкового пути. Родина Аль Фараби.";
+}
+
+if(city==="taraz"){
+text="Тараз — древний город торговли и ремесел Казахстана.";
+}
+
+if(city==="sayram"){
+text="Сайрам — важный торговый узел Великого Шёлкового пути.";
+}
+
+let speech = new SpeechSynthesisUtterance(text);
+speech.lang = "ru-RU";
+speechSynthesis.speak(speech);
+
+}
+
+</script>
+
+</a-scene>
+
+</body>
+</html>
