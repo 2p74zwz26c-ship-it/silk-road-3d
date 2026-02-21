@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Великий Шёлковый путь — 3D экскурсия</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+</head>
+
+<body>
+<a-scene>
+
+  <!-- Небо -->
+  <a-sky color="#F4C27A"></a-sky>
+
+  <!-- Земля -->
+  <a-plane rotation="-90 0 0" width="100" height="100" color="#C2B280"></a-plane>
+
+  <!-- Камера -->
+  <a-entity position="0 1.6 5">
+    <a-camera wasd-controls look-controls></a-camera>
+  </a-entity>
+
+  <!-- Отрар -->
+  <a-box position="-5 1 -10" color="#8B4513"></a-box>
+  <a-text value="Отрар (VIII–XIII вв.)
+Крупный торговый центр.
+Родина Аль-Фараби."
+          position="-5 3 -10"
+          align="center"
+          color="black">
+  </a-text>
+
+  <!-- Тараз -->
+  <a-cylinder position="5 1 -15" radius="1" height="2" color="#A0522D"></a-cylinder>
+  <a-text value="Тараз (VI век)
+Центр торговли и ремесел."
+          position="5 3 -15"
+          align="center"
+          color="black">
+  </a-text>
+
+</a-scene>
+</body>
+</html>
