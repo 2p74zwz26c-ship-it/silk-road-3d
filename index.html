@@ -1,0 +1,315 @@
+jpg" crossorigin="anonymous">
+    <img id="sayramImg" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Sayram%2C_old_city_ruins.jpg/640px-Sayram%2C_old_city_ruins.jpg" crossorigin="anonymous">
+  </a-assets>
+
+  <!-- Необязательные эффекты: солнце и мягкие тени (в браузерах поддержка ограничена) -->
+  <a-entity light="type: ambient; intensity: 0.9"></a-entity>
+  <a-entity light="type: directional; intensity: 1" position="20 50 10"></a-entity>
+
+  <!-- Земля -->
+  <a-plane id="ground" src="#groundTex" rotation="-90 0 0" width="400" height="400" repeat="20 20"></a-plane>
+
+  <!-- Камерный риг — перемещаем его JS -->
+  <a-entity id="cameraRig" position="0 2 24">
+    <a-entity id="camera" camera look-controls wasd-controls>
+      <!-- Мини-наклейка направления (показывать вперед) -->
+      <a-entity position="0 -0.45 -0.8" text="value: Камера; color:#111; width:4; align:center"></a-entity>
+    </a-entity>
+  </a-entity>
+
+  <!-- Города: 3 локации с "реалистичными" маркерами (иконка + подпись) -->
+  <a-entity id="otar" position="-60 0 -120">
+    <a-cylinder position="0 1.5 0" radius="6" height="3" color="#8B4513" opacity="0.9"></a-cylinder>
+    <a-plane position="0 6 0" rotation="0 0 0" material="src: #otarImg; shader: flat" height="8" width="12"></a-plane>
+    <a-text value="Отрар\n(VIII–XIII вв.)\nКараванный центр" position="0 9.5 0" align="center" width="30" color="#111"></a-text>
+  </a-entity>
+
+  <a-entity id="taraz" position="0 0 -170">
+    <a-cylinder position="0 1.5 0" radius="6" height="3" color="#A0522D" opacity="0.9"></a-cylinder>
+    <a-plane position="0 6 0" rotation="0 0 0" material="src: #tarazImg; shader: flat" height="8" width="12"></a-plane>
+    <a-text value="Тараз\n(VI в.)\nТорговля и ремесла" position="0 9.5 0" align="center" width="30" color="#111"></a-text>
+  </a-entity>
+
+  <a-entity id="sayram" position="60 0 -140">
+    <a-cylinder position="0 1.5 0" radius="6" height="3" color="#B8860B" opacity="0.9"></a-cylinder>
+    <a-plane position="0 6 0" rotation="0 0 0" material="src: #sayramImg; shader: flat" height="8" width="12"></a-plane>
+    <a-text value="Сайрам (Исфиджаб)\nВажный узел" position="0 9.5 0" align="center" width="30" color="#111"></a-text>
+  </a-entity>
+
+  <!-- Караван: несколько верблюдов, которые двигаются по простому пути -->
+  <a-entity id="caravanRoot">
+    <!-- три верблюда -->
+    <a-entity id="camel1" gltf-model="#camelModel" position="-30 0 -50" scale="2.6 2.6 2.6" rotation="0 180 0"></a-entity>
+    <a-entity id="camel2" gltf-model="#camelModel" position="-26 0 -54" scale="2.6 2.6 2.6" rotation="0 180 0"></a-entity>
+    <a-entity id="camel3" gltf-model="#camelModel" position="-22 0 -58" scale="2.6 2.6 2.6" rotation="0 180 0"></a-entity>
+  </a-entity>
+
+  <!-- Подписи (можно скрывать) -->
+  <a-entity id="labels" visible="true">
+    <a-entity position="-60 12 -120">
+      <a-text value="Отрар" color="#111" align="center" width="25"></a-text>
+    </a-entity>
+    <a-entity position="0 12 -170">
+      <a-text value="Тараз" color="#111" align="center" width="25"></a-text>
+    </a-entity>
+    <a-entity position="60 12 -140">
+      <a-text value="Сайрам" color="#111" align="center" width="25"></a-text>
+    </a-entity>
+  </a-entity>
+
+</a-scene>
+
+<!-- ===== Скрипт логики: телепортация, озвучка, движение каравана, тест ===== -->
+<script>
+/* ---- Настройки локаций (позиции для cameraRig) ---- */
+const LOCATIONS = {
+  otrar: {pos: {x:-60,y:2,z:-100}, title: "Отрар", text:
+    "Отрар — крупный торговый и административный центр VIII–XIII веков. Важный узел Великого Шёлкового пути. Здесь проходил обмен товарами и знаниями."},
+  taraz: {pos: {x:0,y:2,z:-150}, title: "Тараз", text:
+    "Тараз — один из древнейших городов Казахстана, упоминается с VI века. Центр ремесел и торговли, важная остановка караванов."},
+  sayram: {pos: {x:60,y:2,z:-130}, title: "Сайрам (Исфиджаб)", text:
+    "Сайрам — крупный узел на караванных дорогах, важен для торговли в южном направлении."}
+};
+
+/* ---- Утилиты: плавный переход камеры (без внешних библиотек) ---- */
+  function animateCameraTo(targetPos, duration=1200){
+  const rig = document.querySelector('#cameraRig');
+  const start = rig.getAttribute('position');
+  const t0 = performance.now();
+  const sx = start.x, sy = start.y, sz = start.z;
+  const tx = targetPos.x, ty = targetPos.y, tz = targetPos.z;
+
+  function step(now){
+    const p = Math.min(1, (now - t0) / duration);
+    const ease = p<.5 ? 2*p*p : -1 + (4 - 2*p)*p; // approx easeInOut
+    rig.setAttribute('position', {
+      x: sx + (tx - sx) * ease,
+      y: sy + (ty - sy) * ease,
+      z: sz + (tz - sz) * ease
+    });
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* ---- Показываем текст в панели и озвучиваем ---- */
+function showInfo(title, text){
+  const panel = document.getElementById('infoPanel');
+  panel.innerHTML = <strong>${title}</strong><div style="margin-top:6px;">${text}</div>;
+  // Озвучка (если браузер поддерживает)
+  if ('speechSynthesis' in window){
+    window.speechSynthesis.cancel();
+    const ut = new SpeechSynthesisUtterance(title + ". " + text);
+    ut.lang = 'ru-RU';
+    window.speechSynthesis.speak(ut);
+  }
+}
+
+/* ---- Обработчики кнопок UI ---- */
+document.getElementById('btnOtrar').addEventListener('click', ()=> {
+  animateCameraTo(LOCATIONS.otrar.pos);
+  showInfo(LOCATIONS.otrar.title, LOCATIONS.otrar.text);
+});
+document.getElementById('btnTaraz').addEventListener('click', ()=> {
+  animateCameraTo(LOCATIONS.taraz.pos);
+  showInfo(LOCATIONS.taraz.title, LOCATIONS.taraz.text);
+});
+document.getElementById('btnSayram').addEventListener('click', ()=> {
+  animateCameraTo(LOCATIONS.sayram.pos);
+  showInfo(LOCATIONS.sayram.title, LOCATIONS.sayram.text);
+});
+
+/* ---- Автоматическая экскурсия (последовательно перемещает камеру) ---- */
+document.getElementById('btnStartTour').addEventListener('click', async ()=>{
+  const order = ['otar','taraz','sayram'];
+  for (let id of order){
+    animateCameraTo(LOCATIONS[id].pos);
+    showInfo(LOCATIONS[id].title, LOCATIONS[id].text);
+    await new Promise(r => setTimeout(r, 4200)); // пауза 4.2 с на каждой точке
+  }
+  // Возврат к стартовой позиции
+  animateCameraTo({x:0,y:2,z:24});
+  showInfo("Экскурсия завершена", "Спасибо за внимание!");
+});
+
+/* ---- Движение каравана (включать/выключать) ---- */
+let caravanRunning = true;
+let caravanInterval = null;
+const caravanPath = [
+  {x:-30, z:-50},
+  {x:-10, z:-90},
+  {x:10, z:-110},
+  {x:30, z:-140}
+];
+function moveCaravanOnce(){
+  const c1 = document.getElementById('camel1');
+  const c2 = document.getElementById('camel2');
+  const c3 = document.getElementById('camel3');
+  // Простая интерполяция вдоль пути (циклично)
+  const duration = 9000;
+  const start = performance.now();
+  function step(now){
+    const t = ((now - start) % duration) / duration;
+    // вычислим индекс сегмента
+    const seg = Math.floor(t * (caravanPath.length));
+    const segT = (t * caravanPath.length) - seg;
+    const p0 = caravanPath[seg % caravanPath.length];
+    const p1 = caravanPath[(seg+1) % caravanPath.length];
+    const lerp = (a,b,f)=> a + (b-a)*f;
+    // позиция каждого верблюда со сдвигом
+    const positions = [
+      {x: lerp(p0.x,p1.x,segT), z: lerp(p0.z,p1.z,segT)},
+      {x: lerp(p0.x,p1.x, Math.max(0, segT-0.08) ), z: lerp(p0.z,p1.z, Math.max(0, segT-0.08))},
+      {x: lerp(p0.x,p1.x, Math.max(0, segT-0.16) ), z: lerp(p0.z,p1.z, Math.max(0, segT-0.16))}
+    ];
+    c1.setAttribute('position', {x: positions[0].x, y:0, z: positions[0].z});
+    c2.setAttribute('position', {x: positions[1].x, y:0, z: positions[1].z});
+    c3.setAttribute('position', {x: positions[2].x, y:0, z: positions[2].z});
+    // поворот по направлению движения (очень простая версия)
+    const dx = p1.x - p0.x, dz = p1.z - p0.z;
+    const yaw = Math.atan2(dx, -dz) * 180/Math.PI; // ориентировать лицом вперед
+    c1.setAttribute('rotation', {x:0, y: yaw, z:0});
+    c2.setAttribute('rotation', {x:0, y: yaw, z:0});
+    c3.setAttribute('rotation', {x:0, y: yaw, z:0});
+    if (caravanRunning) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+document.
+  getElementById('btnToggleCaravan').addEventListener('click', ()=>{
+  caravanRunning = !caravanRunning;
+  if (caravanRunning) { moveCaravanOnce(); document.getElementById('btnToggleCaravan').innerText = "Вкл/Выкл движение каравана"; }
+  else { document.getElementById('btnToggleCaravan').innerText = "Вкл/Выкл движение каравана"; }
+});
+
+/* ---- Показ/скрытие подписей ---- */
+document.getElementById('btnToggleLabels').addEventListener('click', ()=>{
+  const labels = document.getElementById('labels');
+  const visible = labels.getAttribute('visible');
+  labels.setAttribute('visible', !visible);
+});
+
+/* ---- Мини-тест: простая логика ---- */
+document.querySelectorAll('.quizOption').forEach(btn=>{
+  btn.addEventListener('click', (e)=>{
+    const text = e.target.innerText;
+    const res = document.getElementById('quizResult');
+    if (text.startsWith('Б')) {
+      res.innerText = "Правильно! Города возникали, чтобы обслуживать караваны и торговлю.";
+    } else {
+      res.innerText = "Неправильно. Подумай: почему караваны останавливались в городах?";
+    }
+  });
+});
+
+/* ---- Инициализация: стартовая озвучка ---- */
+window.addEventListener('load', ()=>{
+  setTimeout(()=>{
+    if ('speechSynthesis' in window){
+      const welcome = new SpeechSynthesisUtterance("Добро пожаловать. Это экскурсия по Великому Шёлковому пути на территории Казахстана. Нажмите любой город, чтобы получить справку и озвучку.");
+      welcome.lang = 'ru-RU';
+      window.speechSynthesis.speak(welcome);
+    }
+  }, 1000);
+
+  // запустить движение каравана по умолчанию
+  moveCaravanOnce();
+});
+</script>
+
+<!-- ===== ОТЛАДКА и советы (видно в HTML) ===== -->
+<!--
+Отладка / если модели не отображаются:
+1) Открой консоль разработчика (F12) -> вкладка Console. Если есть ошибки загрузки (404) — модель не доступна.
+2) Если модель не грузится по URL, загрузи .glb/.gltf в свой репозиторий GitHub и замените src: на "models/Camel.gltf" (путь внутри репозитория).
+3) Если браузер блокирует CORS — загружай файлы в репозиторий (GitHub Pages корректно отдаёт ресурсы).
+4) Для повышения качества: можно заменить ground texture и sky на собственные 360-панорамы (бесплатно — в Poly Haven или Unsplash).
+-->
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Великий Шёлковый путь — Экскурсия для школы</title>
+
+<!-- A-Frame -->
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
+<style>
+  /* Простая эстетика для панели управления */
+  body { margin:0; font-family: system-ui, Arial, sans-serif; background:#222; }
+  #ui {
+    position: fixed; right: 12px; top: 12px; width: 300px;
+    background: rgba(255,255,255,0.95); color: #111;
+    padding: 12px; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+    z-index: 9999;
+  }
+  #ui h2 { margin: 0 0 8px 0; font-size: 18px; }
+  #ui button { width: 100%; margin: 6px 0; padding: 8px; font-size: 15px; border-radius:6px; cursor:pointer; }
+  #infoPanel { margin-top:8px; background:#fff7e6; padding:8px; border-radius:6px; max-height:200px; overflow:auto; font-size:14px;}
+  #miniQuiz { margin-top:8px; }
+  .small { font-size:12px; color:#444; margin-top:8px; }
+  a { color: #0645AD; }
+  /* Мелкая подсказка внизу */
+  #footerHint { position: fixed; left:12px; bottom:12px; color:#fff; font-size:13px; z-index:9998; background:rgba(0,0,0,0.4); padding:8px; border-radius:6px; }
+</style>
+</head>
+<body>
+
+<!-- UI-панель (HTML накладывается поверх сцены; удобно для учителя / жюри) -->
+<div id="ui" role="region" aria-label="Панель управления экскурсией">
+  <h2>Великий Шёлковый путь — Казахстан</h2>
+  <div class="small">Кнопки: перейти в город, включить/выключить караван, озвучка и тест.</div>
+
+  <button id="btnOtrar">Перейти — Отрар</button>
+  <button id="btnTaraz">Перейти — Тараз</button>
+  <button id="btnSayram">Перейти — Сайрам</button>
+
+  <button id="btnStartTour">Запустить автоматическую экскурсию</button>
+  <button id="btnToggleCaravan">Вкл/Выкл движение каравана</button>
+  <button id="btnToggleLabels">Показать/Скрыть подписи</button>
+
+  <div id="infoPanel" aria-live="polite">
+    <strong>Инструкция:</strong>
+    <div>Нажмите город — камера плавно переместится. В панели появится научная справка и озвучка.</div>
+  </div>
+
+  <div id="miniQuiz">
+    <strong>Короткий тест</strong>
+    <div id="question">Почему города возникали вдоль торговых путей?</div>
+    <div style="margin-top:6px;">
+      <button class="quizOption">А. Из-за близости воды</button>
+      <button class="quizOption">Б. Для обслуживания караванов и торговли</button>
+      <button class="quizOption">В. Чтобы жить ближе к пустыне</button>
+    </div>
+    <div id="quizResult" class="small"></div>
+  </div>
+
+  <div class="small" style="margin-top:8px;">
+    Источники: учебник истории 6–7 кл., материалы археологии по Отрару/Таразу, база UNESCO.
+  </div>
+</div>
+
+<div id="footerHint">WASD — ходьба, мышка — осмотр. Для защиты: готовая речь в разделе помощи.</div>
+
+<!-- A-Frame сцена -->
+<a-scene id="scene" background="color: #000" embedded arjs="sourceType: webcam;">
+  <!-- Fog для глубины -->
+  <a-entity fog="type: linear; color: #d6b892; near: 8; far: 160"></a-entity>
+
+  <!-- Assets: текстуры + модели (попробуй сначала — если модель не грузится, см. раздел отладки ниже) -->
+  <a-assets>
+    <!-- 360 небо (пейзаж степи/морской панорамы — выглядит эстетично) -->
+    <img id="skyImg" crossorigin="anonymous" src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/sechelt.jpg">
+    <!-- Текстура земли (песок/степь) -->
+    <img id="groundTex" crossorigin="anonymous" src="https://cdn.aframe.io/a-painter/images/floor.jpg">
+
+    <!-- Camel model (публичный репозиторий). Если не грузится — внизу есть инструкция по замене -->
+    <a-asset-item id="camelModel" src="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Camel/glTF/Camel.gltf"></a-asset-item>
+
+    <!-- Небольшие иконки/текстуры для городов -->
+    <img id="otarImg" src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Remains_of_Otrar_2009.jpg/640px-Remains_of_Otrar_2009.jpg" crossorigin="anonymous">
+    <img id="tarazImg" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Aisha_Bibi_Mausoleum.jpg/640px-Aisha_Bibi_Mausoleum.
